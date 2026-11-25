@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#810](https://github.com/libgd/libgd/issues/810) Wrong image freed, src_cloned should be freed if set.
 - [#812](https://github.com/libgd/libgd/issues/812), ensure operands priority works as expected
 - [#815](https://github.com/libgd/libgd/issues/815), Ensure no null dereferencing happens using the dither table
+- gdImageClone() now copies the transparent color index, so cloned palette and truecolor images keep their transparency instead of resetting it to -1
 
 ## [2.3.3] - 2021-09-12
 

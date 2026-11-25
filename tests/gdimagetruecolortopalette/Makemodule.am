@@ -1,5 +1,6 @@
 libgd_test_programs += \
 	gdimagetruecolortopalette/bug00307 \
+	gdimagetruecolortopalette/gd5_quantization_clone \
 	gdimagetruecolortopalette/neuquant_palette_order \
 	gdimagetruecolortopalette/php_bug_72512 \
 	gdimagetruecolortopalette/transparent_preserved

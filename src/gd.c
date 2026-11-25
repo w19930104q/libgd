@@ -2447,6 +2447,7 @@ BGD_DECLARE(gdImagePtr) gdImageClone(gdImagePtr src)
     }
 
     dst->interlace = src->interlace;
+    dst->transparent = src->transparent;
 
     dst->alphaBlendingFlag = src->alphaBlendingFlag;
     dst->saveAlphaFlag = src->saveAlphaFlag;
