@@ -1,5 +1,6 @@
 LIST(APPEND TESTS_FILES
 	animated_gif_reader
+	animated_gif_roundtrip
 	bug00005_2
 	bug00181
 	bug00227

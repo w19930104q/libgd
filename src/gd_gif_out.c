@@ -309,6 +309,8 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
 {
     gdImagePtr pim = NULL, tim = im;
     int interlace, transparent, BitsPerPixel;
+    int diffOptimization;
+    int sourceTrueColor = im->trueColor;
     interlace = im->interlace;
     transparent = im->transparent;
 
@@ -316,6 +318,19 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
     if (LocalCM < 0) {
         LocalCM = 0;
     }
+
+    /* The previm diff/crop optimization below assumes full-canvas frames
+     * placed at (0,0) with matching dimensions, a shared palette (so equal
+     * indices mean equal colors), and a disposal method that leaves the
+     * previous canvas in place (do-not-dispose / unspecified). A
+     * sub-rectangle frame, a size change, a true-color source (each frame is
+     * quantized to its own palette below), or a restore-background/
+     * restore-previous disposal must be encoded verbatim so the frame's
+     * own rectangle, colors and disposal semantics survive the rewrite. */
+    diffOptimization =
+        previm != NULL && !sourceTrueColor && LeftOfs == 0 && TopOfs == 0 &&
+        im->sx == previm->sx && im->sy == previm->sy &&
+        (Disposal == gdDisposalUnknown || Disposal == gdDisposalNone);
 
     if (im->trueColor) {
         /* Expensive, but the only way that produces an
@@ -326,9 +341,13 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
             return 1;
         }
         tim = pim;
+        /* The quantized frame carries its own palette whose indices do not
+         * match the animation's global color table, so it must be written
+         * with a local color map to stay decodable. */
+        LocalCM = 1;
     }
 
-    if (previm) {
+    if (diffOptimization) {
         /* create optimized animation.  Compare this image to
            the previous image and crop the temporary copy of
            current image to include only changed rectangular
@@ -437,7 +456,8 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
 
         LeftOfs = min_x;
         TopOfs = min_y;
-        Disposal = 1;
+        /* Disposal is kept as supplied: this optimization only runs for
+         * do-not-dispose semantics, on which the cropped rectangle relies. */
 
         /* Make a copy of the image with the new offsets.
            But only if necessary. */
@@ -481,6 +501,14 @@ static int _gdImageGifAnimAddCtx(gdImagePtr im, gdIOCtxPtr out, int LocalCM, int
         if (prev_pim) {
             gdImageDestroy(prev_pim);
         }
+    }
+
+    /* Keep the caller's per-frame disposal semantics. Wire values 0..3 are
+     * valid GIF disposal methods (0 is "unspecified", treated as do-not-
+     * dispose by decoders); anything outside that range is normalized so we
+     * never emit reserved codes. */
+    if (Disposal < 0 || Disposal > gdDisposalRestorePrevious) {
+        Disposal = gdDisposalNone;
     }
 
     BitsPerPixel = colorstobpp(tim->colorsTotal);
@@ -781,8 +809,8 @@ static void GIFAnimEncode(gdIOCtxPtr fp, int IWidth, int IHeight, int LeftOfs, i
     if (Delay < 0) {
         Delay = 100;
     }
-    if (Disposal < 0) {
-        Disposal = 1;
+    if (Disposal < 0 || Disposal > gdDisposalRestorePrevious) {
+        Disposal = gdDisposalNone;
     }
 
     ctx.Width = IWidth;
@@ -811,7 +839,7 @@ static void GIFAnimEncode(gdIOCtxPtr fp, int IWidth, int IHeight, int LeftOfs, i
     gdPutC((Transparent >= 0 ? 1 : 0) | (Disposal << 2), fp);
     gdPutC((unsigned char)(Delay & 255), fp);
     gdPutC((unsigned char)((Delay >> 8) & 255), fp);
-    gdPutC((unsigned char)Transparent, fp);
+    gdPutC((unsigned char)(Transparent >= 0 ? Transparent : 0), fp);
     gdPutC(0, fp);
 
     /* Write an Image separator */

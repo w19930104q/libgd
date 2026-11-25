@@ -143,6 +143,11 @@ typedef struct gdGifReadStruct {
     gdImagePtr canvas;
     gdImagePtr previousCanvas;
     gdGifFrameInfo lastInfo;
+    /* Disposal state owned by the most recently composited frame. It is
+     * decided when that frame is read, rather than lazily inferred from
+     * lastInfo while the next frame is being copied. */
+    gdGifFrameInfo pendingInfo;
+    int havePending;
 } gdGifRead;
 
 static void GifResetGraphicControl(GifGraphicControl *gce);
@@ -455,10 +460,10 @@ static gdImagePtr GifCloneImage(gdImagePtr src)
 
 static void GifApplyPreviousDisposal(gdGifRead *gif)
 {
-    gdGifFrameInfo *info = &gif->lastInfo;
+    gdGifFrameInfo *info = &gif->pendingInfo;
     int x, y, bg;
 
-    if (gif->canvas == NULL || gif->frameIndex <= 0) {
+    if (gif->canvas == NULL || !gif->havePending) {
         return;
     }
 
@@ -477,6 +482,7 @@ static void GifApplyPreviousDisposal(gdGifRead *gif)
         }
     }
 
+    gif->havePending = 0;
     if (gif->previousCanvas != NULL) {
         gdImageDestroy(gif->previousCanvas);
         gif->previousCanvas = NULL;
@@ -509,6 +515,11 @@ static int GifCompositeFrame(gdGifRead *gif, gdImagePtr rawFrame)
                             GifFrameToColor(rawFrame, c));
         }
     }
+
+    /* Pin this frame's disposal semantics to its own rectangle and
+     * transparency state; the next read applies them before compositing. */
+    gif->pendingInfo = *info;
+    gif->havePending = 1;
 
     return 1;
 }

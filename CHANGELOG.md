@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- animated GIF rewrite preserves per-frame disposal methods, delays and sub-rectangle geometry instead of overwriting them through the previm optimization; true-color frames are written with local color maps, and frame disposal is applied from each frame's own saved state
 - [#797](https://github.com/libgd/libgd/issues/797) possible leak on png error, setjmp lost the row_pointers ref
 - [#788](https://github.com/libgd/libgd/issues/788) fix bug in HEIF usage, stride is require
 - [#775](https://github.com/libgd/libgd/issues/775) Create SECURITY.md
